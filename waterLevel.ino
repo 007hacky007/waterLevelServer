@@ -1,7 +1,6 @@
 #include <WiFi.h>
 #include <Preferences.h>
 #include "BluetoothSerial.h"
-#include <U8x8lib.h>
 #include <Wire.h>
 #include <TaskScheduler.h>
 #include <WebServer.h>
@@ -33,7 +32,6 @@ enum wifi_setup_stages wifi_stage = NONE;
 // this will assign the name PushButton to pin numer 4
 const int PushButton = 4;
 
-U8X8_SSD1306_128X64_NONAME_SW_I2C u8x8(/* clock=*/ 23, /* data=*/ 18);
 WebServer server(80);
 
 BluetoothSerial SerialBT;
@@ -47,33 +45,11 @@ void log(String text, bool reset = true)
 {
   if (reset) {
     Serial.println(text);
-    u8x8.print(F("                 \n                 \n                 \n                 "));
-    u8x8.home();
   } else {
     Serial.print(text);
   }
-  // printf ("%.*s%s\n", (sz < strlen(s)) ? 0 : sz - strlen(s), pad, s);
-  u8x8.print(wrap(text, 16));
 }
 
-String wrap(String s, int limit) {
-  int space = 0;
-  int i = 0;
-  int line = 0;
-  while (i < s.length()) {
-
-    if (s.substring(i, i + 1) == " ") {
-      space = i;
-    }
-    if (line > limit - 1) {
-      s = s.substring(0, space) + "~" + s.substring(space + 1);
-      line = 0;
-    }
-    i++; line++;
-  }
-  s.replace("~", "\n");
-  return s;
-}
 
 void start_mdns_service()
 {
@@ -188,8 +164,6 @@ void setup()
   runner.addTask(t1);
   Serial.begin(115200);
 
-  u8x8.begin();
-  u8x8.setFont(u8x8_font_amstrad_cpc_extended_r);
   log("Booting...");
 
   preferences.begin("wifi_access", false);
