@@ -3,10 +3,22 @@
 #include "BluetoothSerial.h"
 #include <Wire.h>
 #include <TaskScheduler.h>
-#include <WebServer.h>
+#include "ESPAsyncWebServer.h"
 #include <ESPmDNS.h>
 #include "apps/sntp/sntp.h"
+#include "SPIFFS.h"
+#include "ThingSpeak.h"
+#include "uptime.h"
+#include "uptime_formatter.h"
+#include <EasyDDNS.h>
+#include <math.h>
+#include <RH_ASK.h>
+#include <SPI.h> // Not actually used but needed to compile
 
+/*
+    This code works only with ESP 1.4.0 version */
+
+WiFiClient client; // for thingspeak
 
 String ssids_array[50];
 String network_string;
@@ -25,6 +37,7 @@ const char* bluetooth_name = "jimka-esp32";
 long start_wifi_millis;
 long wifi_timeout = 10000;
 bool bluetooth_disconnect = false;
+bool clear_preferences_requested = false;
 
 enum wifi_setup_stages { NONE, SCAN_START, SCAN_COMPLETE, SSID_ENTERED, WAIT_PASS, PASS_ENTERED, WAIT_CONNECT, LOGIN_FAILED };
 enum wifi_setup_stages wifi_stage = NONE;
@@ -32,7 +45,22 @@ enum wifi_setup_stages wifi_stage = NONE;
 // this will assign the name PushButton to pin numer 4
 const int PushButton = 4;
 
-WebServer server(80);
+// form settings
+uint32_t hloubka = 0;
+uint32_t napust = 0;
+String thingspeakApiKey = "";
+unsigned long thingspeakChannel = 0;
+
+float humidity = 0;
+float temperature = 0;
+uint32_t distance = 0;
+int battPerc = 0;
+float battVoltage = 0;
+unsigned long uptime_minutes_received = 0;
+String duckdnsDomain = "";
+String duckdnsToken = "";
+
+AsyncWebServer server(80);
 
 BluetoothSerial SerialBT;
 Preferences preferences;
@@ -40,6 +68,102 @@ Preferences preferences;
 void clearPreferences();
 Task t1(1000, 1, &clearPreferences);
 Scheduler runner;
+
+RH_ASK driver(2000, 13); // 200bps
+
+void notFound(AsyncWebServerRequest *request) {
+  request->send(404, "text/plain", "Not found");
+}
+
+void onSave(AsyncWebServerRequest *request) {
+  preferences.begin("jimka", false);
+  if (request->hasParam("hloubka", true)) {
+    hloubka = atoi(request->getParam("hloubka", true)->value().c_str());
+    preferences.putUInt("hloubka", hloubka);
+  }
+
+  if (request->hasParam("napust", true)) {
+    napust = atoi(request->getParam("napust", true)->value().c_str());
+    preferences.putUInt("napust", napust);
+  }
+
+  if (request->hasParam("thingspeakApi", true)) {
+    thingspeakApiKey = request->getParam("thingspeakApi", true)->value().c_str();
+    preferences.putString("thingspeakApi", String(thingspeakApiKey));
+  }
+
+  if (request->hasParam("thingspeakChannel", true)) {
+    thingspeakChannel = atol(request->getParam("thingspeakChannel", true)->value().c_str());
+    preferences.putULong("thingspeakChannel", thingspeakChannel);
+  }
+
+  if (request->hasParam("duckdnsDomain", true)) {
+    duckdnsDomain = request->getParam("duckdnsDomain", true)->value().c_str();
+    preferences.putString("duckdnsDomain", duckdnsDomain);
+  }
+
+  if (request->hasParam("duckdnsToken", true)) {
+    duckdnsToken = request->getParam("duckdnsToken", true)->value().c_str();
+    preferences.putString("duckdnsToken", duckdnsToken);
+  }
+  preferences.end();
+  if (duckdnsDomain != "" && duckdnsToken != "")
+    EasyDDNS.client(duckdnsDomain, duckdnsToken);
+
+  Serial.println("save executed");
+}
+
+void startWebServer() {
+  // Route for root / web page
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+
+  // Route to load style.css file
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/style.css", "text/css");
+  });
+
+  server.on("/view.css", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/view.css", "text/css");
+  });
+
+  server.on("/configuration.html", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/configuration.html", String(), false, processor);
+  });
+
+  server.on("/view.js", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/view.js", "text/javascript");
+  });
+
+  server.on("/blank.gif", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/blank.gif", "image/gif");
+  });
+
+  server.on("/shadow.gif", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/shadow.gif", "image/gif");
+  });
+
+  server.on("/bottom.png", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/bottom.png", "image/png");
+  });
+
+  server.on("/top.png", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/top.png", "image/png");
+  });
+
+  server.on("/iepngfix.htc", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/iepngfix.htc", "text/x-component");
+  });
+
+  server.on("/configuration.html", HTTP_POST, [](AsyncWebServerRequest * request) {
+    onSave(request);
+    request->send(200, "text/plain", "Ulozeno");
+  });
+
+  server.onNotFound(notFound);
+  server.begin();
+}
 
 void log(String text, bool reset = true)
 {
@@ -78,56 +202,33 @@ void add_mdns_services()
 
 void clearPreferences() {
   //log("clearPreferences executed");
+  preferences.begin("wifi_access", false);
   preferences.clear();
+  preferences.end();
+  preferences.begin("jimka", false);
+  preferences.clear();
+  preferences.end();
   log("BTN pressed. Preferences deleted. Rebooting in 3 seconds");
   delay(3000);
   ESP.restart();
 }
 
+void getJimkaPreferences() {
+  preferences.begin("jimka", true);
+  hloubka = preferences.getUInt("hloubka", 200);
+  napust = preferences.getUInt("napust", 0);
+  thingspeakApiKey = preferences.getString("thingspeakApi", "");
+  thingspeakChannel = preferences.getULong("thingspeakChannel", 0);
+  preferences.end();
+}
+
+
 void isr() {
   t1.enable();
   log("button pressed");
+  clear_preferences_requested = true;
 }
 
-void webIndex() {
-  // načtení hodnoty analogového pinu a času
-  // od spuštění Arduina ve formátu String
-  // String analog = String(analogRead(analogPin));
-  String cas = String(millis() / 1000);
-  // vytvoření zprávy, která bude vytištěna
-  // v prohlížeči (<br> znamená nový řádek)
-  String zprava = "Ahoj Arduino svete!<br>";
-  //zprava += "Analogovy pin A0: ";
-  //zprava += analog;
-  zprava += "<br>Cas od spusteni Arduina je ";
-  zprava += cas;
-  zprava += " vterin.<br><br>";
-  //zprava += "Stav LED: ";
-  //zprava += digitalRead(LEDka);
-  zprava += "<br><br>";
-  zprava += "<a href=\"/ledON\"\">Zapni LEDku</a><br><br>";
-  zprava += "<a href=\"/ledOFF\"\">Vypni LEDku</a>";
-  // vytištění zprávy se statusem 200 - OK
-  server.send(200, "text/html", zprava);
-}
-
-void web404() {
-  // vytvoření zprávy s informací o neexistujícím odkazu
-  // včetně metody a zadaného argumentu
-  String zprava = "Neexistujici odkaz\n\n";
-  zprava += "URI: ";
-  zprava += server.uri();
-  zprava += "\nMetoda: ";
-  zprava += (server.method() == HTTP_GET) ? "GET" : "POST";
-  zprava += "\nArgumenty: ";
-  zprava += server.args();
-  zprava += "\n";
-  for (uint8_t i = 0; i < server.args(); i++) {
-    zprava += " " + server.argName(i) + ": " + server.arg(i) + "\n";
-  }
-  // vytištění zprávy se statusem 404 - Nenalezeno
-  server.send(404, "text/plain", zprava);
-}
 
 bool getNTPtime() {
   time_t now;
@@ -135,13 +236,11 @@ bool getNTPtime() {
   struct tm timeinfo;
 
   time(&now);
-  // Set timezone to China Standard Time
-  setenv("TZ", "CST-8", 1);
+  setenv("TZ", TZ_INFO, 1);
   tzset();
 
   localtime_r(&now, &timeinfo);
   strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-  ESP_LOGI(TAG, "The current date/time in Shanghai is: %s", strftime_buf);
 }
 
 void getFormattedTime(tm localTime) {
@@ -158,38 +257,73 @@ void getFormattedTime(tm localTime) {
   );
 }
 
-void setup()
-{
-  runner.init();
-  runner.addTask(t1);
-  Serial.begin(115200);
-
-  log("Booting...");
-
-  preferences.begin("wifi_access", false);
-  //int Push_button_state = digitalRead(PushButton);
-  attachInterrupt(PushButton, isr, RISING);
-
-  String pref_ssid = preferences.getString("pref_ssid", "");
-  String pref_pass = preferences.getString("pref_pass", "");
-
-  if (pref_ssid == "") {
-    // BT config
-    log("BT Configuration enabled");
-    SerialBT.register_callback(callback);
-  } else {
-    while (!init_wifi(pref_ssid, pref_pass)) {
-      log("Could not connect to the selected WiFi network, waiting 10 seconds");
-      delay(10000);
-      log("Retying");
-      runner.execute();
-    }
-    SerialBT.register_callback(callback_show_ip);
+String processor(const String& var) {
+  //Serial.println(var);
+  if (var == "NAPUST") {
+    return String(napust);
   }
-  SerialBT.begin(bluetooth_name);
-  server.on("/", webIndex);
-  server.onNotFound(web404);
+
+  if (var == "HLOUBKA") {
+    return String(hloubka);
+  }
+
+  if (var == "VOLT") {
+    return String(battVoltage);
+  }
+
+  if (var == "BATTPERCENT") {
+    return String(battPerc);
+  }
+
+  if (var == "HLADINA") {
+    int hladina;
+    hladina = hloubka - distance - napust;
+    return String(hladina);
+  }
+
+  if (var == "PLNOSTPERC") {
+    int hladina;
+    hladina = hloubka - distance - napust;
+    float perc = ((float) hladina / (float) hloubka) * 100.00;
+    int perc2 = round(perc);
+    return String(perc2);
+  }
+
+  if (var == "TEPLOTA") {
+    return String(temperature);
+  }
+
+  if (var == "VLHKOST") {
+    return String(humidity);
+  }
+
+  if (var == "THINGSPEAKAPI") {
+    return thingspeakApiKey;
+  }
+
+  if (var == "THINGSPEAKCHANNEL") {
+    return String(thingspeakChannel);
+  }
+
+  if (var == "LASTMEASUREMENT") {
+    uptime::calculateUptime();
+    return String(uptime::getMinutesRaw() - uptime_minutes_received);
+  }
+
+  if (var == "UPTIME") {
+    return String(uptime_formatter::getUptime());
+  }
+
+  if (var == "DUCKDNSDOMAIN") {
+    return duckdnsDomain;
+  }
+
+  if (var == "DUCKDNSTOKEN") {
+    return duckdnsToken;
+  }
+  return String();
 }
+
 
 bool init_wifi(String ssid, String pass)
 {
@@ -210,7 +344,8 @@ bool init_wifi(String ssid, String pass)
       return false;
     }
   }
-  log(" success", false);
+  log(" success: " + WiFi.localIP().toString(), false);
+  delay(2000);
   start_mdns_service();
   add_mdns_services();
   sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -291,12 +426,142 @@ void disconnect_bluetooth()
   bluetooth_disconnect = false;
 }
 
+bool receive433() {
+  // Set buffer to size of expected message
+  uint8_t buf[RH_ASK_MAX_MESSAGE_LEN];
+  uint8_t buflen = sizeof(buf);
+  // Check if received packet is correct size
+  if (driver.recv(buf, &buflen))
+  {
+    uptime::calculateUptime();
+    uptime_minutes_received = uptime::getMinutesRaw();
+    int i;
+    String message;
+    for (i = 0; i < buflen; i++)
+    {
+      char c = (buf[i]);
+      message = message + c ; // make a message from the received characters
+    }
+    String hum = getValue(message, ',', 0);
+    String temp = getValue(message, ',', 1);
+    String dist = getValue(message, ',', 2);
+    String batteryPercentage = getValue(message, ',', 3);
+    String batteryVoltage = getValue(message, ',', 4);
+
+    humidity = hum.toFloat();
+    temperature = temp.toFloat();
+    distance = dist.toInt();
+    battPerc = batteryPercentage.toInt();
+    battVoltage = batteryVoltage.toFloat();
+
+    // Message received with valid checksum
+    Serial.print("Vlhkost: ");
+    Serial.print(hum);
+    Serial.print(" %, Teplota: ");
+    Serial.print(temp);
+    Serial.println(" Celsius");
+    Serial.print("Distance = ");
+    Serial.print(dist);
+    Serial.println(" cm");
+    Serial.print("Batt percent: ");
+    Serial.print(batteryPercentage);
+    Serial.println("%");
+    Serial.print("Batt voltage: ");
+    Serial.print(batteryVoltage);
+    Serial.println("V");
+    return true;
+  }
+
+  return false;
+}
+
+void thingspeakSendData() {
+  if (thingspeakApiKey == "" || thingspeakChannel == 0)
+    return;
+
+  ThingSpeak.setField(1, humidity);
+  ThingSpeak.setField(2, temperature);
+  ThingSpeak.setField(3, (int) (hloubka - distance - napust));
+  ThingSpeak.setField(4, battVoltage);
+  char cstr[100];
+  thingspeakApiKey.toCharArray(cstr, 100);
+  ThingSpeak.writeFields(thingspeakChannel, cstr);
+}
+
+String getValue(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = { 0, -1 };
+  int maxIndex = data.length() - 1;
+
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i + 1 : i;
+    }
+  }
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
+}
+
+void setup()
+{
+  runner.init();
+  runner.addTask(t1);
+  Serial.begin(115200);
+
+  log("Booting...");
+
+  // Initialize SPIFFS
+  if (!SPIFFS.begin(true)) {
+    Serial.println("An Error has occurred while mounting SPIFFS");
+    return;
+  }
+
+  attachInterrupt(PushButton, isr, RISING);
+  delay(2000);
+  if (clear_preferences_requested) {
+    clearPreferences();
+  }
+
+  preferences.begin("wifi_access", true);
+  String pref_ssid = preferences.getString("pref_ssid", "");
+  String pref_pass = preferences.getString("pref_pass", "");
+  preferences.end();
+  getJimkaPreferences();
+
+  if (pref_ssid == "") {
+    // BT config
+    log("BT Configuration enabled");
+    SerialBT.register_callback(callback);
+  } else {
+    while (!init_wifi(pref_ssid, pref_pass)) {
+      runner.execute();
+      log("Could not connect to the selected WiFi network, waiting 10 seconds");
+      delay(10000);
+      log("Retying");
+    }
+    SerialBT.register_callback(callback_show_ip);
+    startWebServer();
+  }
+  SerialBT.begin(bluetooth_name);
+
+  if (!driver.init())
+    Serial.println("433 MHz init failed");
+
+  ThingSpeak.begin(client);  // Initialize ThingSpeak
+  EasyDDNS.service("duckdns");
+  if (duckdnsDomain != "" && duckdnsToken != "")
+    EasyDDNS.client(duckdnsDomain, duckdnsToken);
+}
+
 void loop()
 {
   runner.execute();
   if (bluetooth_disconnect)
   {
     disconnect_bluetooth();
+    startWebServer();
   }
 
   switch (wifi_stage)
@@ -319,8 +584,10 @@ void loop()
       SerialBT.println(F("Please wait for Wi-Fi connection..."));
       log("Please wait for Wi_Fi connection...");
       wifi_stage = WAIT_CONNECT;
+      preferences.begin("wifi_access", false);
       preferences.putString("pref_ssid", client_wifi_ssid);
       preferences.putString("pref_pass", client_wifi_password);
+      preferences.end();
       if (init_wifi(client_wifi_ssid, client_wifi_password)) { // Connected to WiFi
         connected_string = "ESP32 IP: ";
         connected_string = connected_string + WiFi.localIP().toString();
@@ -340,9 +607,12 @@ void loop()
       break;
   }
 
+  bool r433 = receive433();
   if (WiFi.localIP().toString() != "0.0.0.0") {
-    //log("Connected " + WiFi.localIP().toString());
-    server.handleClient();
+    if (duckdnsDomain != "" && duckdnsToken != "")
+      EasyDDNS.update(10000, true);
+
+    if (r433)
+      thingspeakSendData();
   }
-  delay(20);
 }
