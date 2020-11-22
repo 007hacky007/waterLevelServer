@@ -118,6 +118,10 @@ void startWebServer() {
     request->send(SPIFFS, "/index.html", String(), false, processor);
   });
 
+  server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest * request) {
+    request->send(SPIFFS, "/index.html", String(), false, processor);
+  });
+
   // Route to load style.css file
   server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/style.css", "text/css");
@@ -131,14 +135,6 @@ void startWebServer() {
     request->send(SPIFFS, "/configuration.html", String(), false, processor);
   });
 
-  server.on("/view.js", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send(SPIFFS, "/view.js", "text/javascript");
-  });
-
-  server.on("/blank.gif", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send(SPIFFS, "/blank.gif", "image/gif");
-  });
-
   server.on("/shadow.gif", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/shadow.gif", "image/gif");
   });
@@ -149,10 +145,6 @@ void startWebServer() {
 
   server.on("/top.png", HTTP_GET, [](AsyncWebServerRequest * request) {
     request->send(SPIFFS, "/top.png", "image/png");
-  });
-
-  server.on("/iepngfix.htc", HTTP_GET, [](AsyncWebServerRequest * request) {
-    request->send(SPIFFS, "/iepngfix.htc", "text/x-component");
   });
 
   server.on("/configuration.html", HTTP_POST, [](AsyncWebServerRequest * request) {
