@@ -5,7 +5,6 @@
 #include <TaskScheduler.h>
 #include "ESPAsyncWebServer.h"
 #include <ESPmDNS.h>
-#include "apps/sntp/sntp.h"
 #include "SPIFFS.h"
 #include "ThingSpeak.h"
 #include "uptime.h"
@@ -229,34 +228,6 @@ void isr() {
   clear_preferences_requested = true;
 }
 
-
-bool getNTPtime() {
-  time_t now;
-  char strftime_buf[64];
-  struct tm timeinfo;
-
-  time(&now);
-  setenv("TZ", TZ_INFO, 1);
-  tzset();
-
-  localtime_r(&now, &timeinfo);
-  strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-}
-
-void getFormattedTime(tm localTime) {
-  Serial.printf(
-    "%04d-%02d-%02d %02d:%02d:%02d, day %d, %s time\n",
-    localTime.tm_year + 1900,
-    localTime.tm_mon + 1,
-    localTime.tm_mday,
-    localTime.tm_hour,
-    localTime.tm_min,
-    localTime.tm_sec,
-    (localTime.tm_wday > 0 ? localTime.tm_wday : 7 ),
-    (localTime.tm_isdst == 1 ? "summer" : "standard")
-  );
-}
-
 String processor(const String& var) {
   //Serial.println(var);
   if (var == "NAPUST") {
@@ -348,11 +319,6 @@ bool init_wifi(String ssid, String pass)
   delay(2000);
   start_mdns_service();
   add_mdns_services();
-  sntp_setoperatingmode(SNTP_OPMODE_POLL);
-  sntp_setservername(0, "cz.pool.ntp.org");
-  sntp_init();
-  setenv("TZ", TZ_INFO, 1);
-  tzset();
   return true;
 }
 
