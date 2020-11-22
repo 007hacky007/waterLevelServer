@@ -48,7 +48,7 @@ const int PushButton = 4;
 uint32_t hloubka = 0;
 uint32_t napust = 0;
 String thingspeakApiKey = "";
-unsigned long thingspeakChannel = 0;
+uint32_t thingspeakChannel = 0;
 
 float humidity = 0;
 float temperature = 0;
@@ -93,7 +93,7 @@ void onSave(AsyncWebServerRequest *request) {
 
   if (request->hasParam("thingspeakChannel", true)) {
     thingspeakChannel = atol(request->getParam("thingspeakChannel", true)->value().c_str());
-    preferences.putULong("thingspeakChannel", thingspeakChannel);
+    preferences.putUInt("thingspeakChann", thingspeakChannel);
   }
 
   if (request->hasParam("duckdnsDomain", true)) {
@@ -209,7 +209,7 @@ void getJimkaPreferences() {
   hloubka = preferences.getUInt("hloubka", 200);
   napust = preferences.getUInt("napust", 0);
   thingspeakApiKey = preferences.getString("thingspeakApi", "");
-  thingspeakChannel = preferences.getULong("thingspeakChannel", 0);
+  thingspeakChannel = preferences.getUInt("thingspeakChann");
   duckdnsToken = preferences.getString("duckdnsToken", "");
   duckdnsDomain = preferences.getString("duckdnsDomain", "");
   preferences.end();
