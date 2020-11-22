@@ -218,6 +218,8 @@ void getJimkaPreferences() {
   napust = preferences.getUInt("napust", 0);
   thingspeakApiKey = preferences.getString("thingspeakApi", "");
   thingspeakChannel = preferences.getULong("thingspeakChannel", 0);
+  duckdnsToken = preferences.getString("duckdnsToken", "");
+  duckdnsDomain = preferences.getString("duckdnsDomain", "");
   preferences.end();
 }
 
