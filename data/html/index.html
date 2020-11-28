@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Jimka</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" type="text/css" href="/css/normalize.min.css">
+  <link rel="stylesheet" type="text/css" href="/css/style.css">
+</head>
+<body>
+  <h1>Jimka</h1>
+  <p>Hladina: <strong> %HLADINA%cm</strong> / %HLOUBKA%cm</p>
+  <p>Teplota: %TEPLOTA%&deg;C</p>
+  <p>Vlhkost: %VLHKOST%&#37;</p>
+  <p>Data aktualizovana pred %LASTMEASUREMENT% minutama</p>
+  <h2>%PLNOSTPERC%&#37;</h2>
+<div class="tank">
+    <div class="water" style="height: %PLNOSTPERC%%%;"></div>
+</div>
+<div class="container">
+<p>Baterie: <strong>%BATTPERCENT%&#37;</strong> (%VOLT%V)
+  <div id="batBody">
+    <div id="indicator" style="width: %BATTPERCENT%%%;">     
+    </div>
+  </div>
+  <div class="batEnd">
+    <div></div>
+  </div>
+</div>
+  <p>Uptime: <strong> %UPTIME%</strong></p>
+  <p><a href="/configuration.html">Nastaveni</a>
+</body>
+</html>
