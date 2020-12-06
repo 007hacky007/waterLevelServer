@@ -7,7 +7,7 @@
 #include <TaskScheduler.h>
 #include "ESPAsyncWebServer.h"
 #include <ESPmDNS.h>
-#include "SPIFFS.h"
+#include "LittleFS.h"
 #include "ThingSpeak.h"
 #include "uptime.h"
 #include "uptime_formatter.h"
@@ -101,7 +101,7 @@ void disconnect_bluetooth();
 bool receive433();
 void thingspeakSendData();
 String getValue(String data, char separator, int index);
-bool loadFromSPIFFS(AsyncWebServerRequest *request, String path, String dataType);
+bool loadFromLittleFS(AsyncWebServerRequest *request, String path, String dataType);
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -153,20 +153,20 @@ void onSave(AsyncWebServerRequest *request)
     Serial.println(F("save executed"));
 }
 
-bool loadFromSPIFFS(AsyncWebServerRequest *request, String path, String dataType)
+bool loadFromLittleFS(AsyncWebServerRequest *request, String path, String dataType)
 {
     //Serial.print("Requested page -> ");
     //Serial.println(path);
-    if (SPIFFS.exists(path))
+    if (LITTLEFS.exists(path))
     {
-        File dataFile = SPIFFS.open(path, "r");
+        File dataFile = LITTLEFS.open(path, "r");
         if (!dataFile)
         {
             notFound(request);
             return false;
         }
 
-        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, path, dataType);
+        AsyncWebServerResponse *response = request->beginResponse(LITTLEFS, path, dataType);
         //Serial.print("Real file path: ");
         //Serial.println(path);
 
@@ -186,46 +186,46 @@ bool loadFromSPIFFS(AsyncWebServerRequest *request, String path, String dataType
 void startWebServer()
 {
     server.on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/css/style.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/style.css.gz", "text/css");
     });
     server.on("/js/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/js/bootstrap.bundle.min.js.gz", "text/javascript");
+        loadFromLittleFS(request, "/js/bootstrap.bundle.min.js.gz", "text/javascript");
     });
     server.on("/css/roboto.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/css/roboto.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/roboto.css.gz", "text/css");
     });
     server.on("/js/jquery-3.5.1.min.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/js/jquery-3.5.1.min.js.gz", "text/javascript");
+        loadFromLittleFS(request, "/js/jquery-3.5.1.min.js.gz", "text/javascript");
     });
     server.on("/webfonts/fa-solid-900.woff", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/webfonts/fa-solid-900.woff.gz", "font/woff");
+        loadFromLittleFS(request, "/webfonts/fa-solid-900.woff.gz", "font/woff");
     });
     server.on("/webfonts/roboto_c9.ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/webfonts/roboto_c9.ttf.gz", "font/ttf");
+        loadFromLittleFS(request, "/webfonts/roboto_c9.ttf.gz", "font/ttf");
     });
     server.on("/webfonts/roboto_xP.ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/webfonts/roboto_xP.ttf.gz", "font/ttf");
+        loadFromLittleFS(request, "/webfonts/roboto_xP.ttf.gz", "font/ttf");
     });
     server.on("/css/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/css/bootstrap.min.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/bootstrap.min.css.gz", "text/css");
     });
     server.on("/css/fontawesome.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/css/fontawesome.min.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/fontawesome.min.css.gz", "text/css");
     });
     server.on("/css/solid.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromSPIFFS(request, "/css/solid.min.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/solid.min.css.gz", "text/css");
     });
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/index.html", String(), false, processor);
+        request->send(LITTLEFS, "/index.html", String(), false, processor);
     });
     server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/index.html", String(), false, processor);
+        request->send(LITTLEFS, "/index.html", String(), false, processor);
     });
     server.on("/graphs.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/graphs.html", String(), false, processor);
+        request->send(LITTLEFS, "/graphs.html", String(), false, processor);
     });
     server.on("/configuration.html", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send(SPIFFS, "/configuration.html", String(), false, processor);
+        request->send(LITTLEFS, "/configuration.html", String(), false, processor);
     });
 
     server.on("/configuration.html", HTTP_POST, [](AsyncWebServerRequest *request) {
@@ -606,7 +606,7 @@ void setup()
     log(F("Booting..."));
 
     // Initialize SPIFFS
-    if (!SPIFFS.begin(false, "/spiffs", 100))
+    if (!LITTLEFS.begin(false, "/littlefs", 100))
     {
         Serial.println(F("An Error has occurred while mounting LITTLEFS"));
         return;

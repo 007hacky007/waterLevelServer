@@ -1,0 +1,2 @@
+#!/bin/bash
+/Users/anonymous/Documents/PlatformIO/Projects/201126-170059-lolin32/mklittlefs "$@" 2>&1 | tee /Users/anonymous/Documents/PlatformIO/Projects/201126-170059-lolin32/mklittlefs.log
