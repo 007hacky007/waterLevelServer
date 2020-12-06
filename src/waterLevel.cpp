@@ -7,7 +7,7 @@
 #include <TaskScheduler.h>
 #include "ESPAsyncWebServer.h"
 #include <ESPmDNS.h>
-#include "LittleFS.h"
+#include "SPIFFS.h"
 #include "ThingSpeak.h"
 #include "uptime.h"
 #include "uptime_formatter.h"
@@ -101,6 +101,7 @@ void disconnect_bluetooth();
 bool receive433();
 void thingspeakSendData();
 String getValue(String data, char separator, int index);
+bool loadFromSPIFFS(AsyncWebServerRequest *request, String path, String dataType);
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -152,11 +153,80 @@ void onSave(AsyncWebServerRequest *request)
     Serial.println(F("save executed"));
 }
 
+bool loadFromSPIFFS(AsyncWebServerRequest *request, String path, String dataType)
+{
+    //Serial.print("Requested page -> ");
+    //Serial.println(path);
+    if (SPIFFS.exists(path))
+    {
+        File dataFile = SPIFFS.open(path, "r");
+        if (!dataFile)
+        {
+            notFound(request);
+            return false;
+        }
+
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, path, dataType);
+        //Serial.print("Real file path: ");
+        //Serial.println(path);
+
+        response->addHeader("Content-Encoding", "gzip");
+        request->send(response);
+
+        dataFile.close();
+    }
+    else
+    {
+        notFound(request);
+        return false;
+    }
+    return true;
+}
+
 void startWebServer()
 {
-    server.serveStatic("/", LITTLEFS, "/html/").setTemplateProcessor(processor).setDefaultFile("index.html");
-    server.serveStatic("/css/", LITTLEFS, "/css/");
-    server.serveStatic("/img/", LITTLEFS, "/img/");
+    server.on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/css/style.css.gz", "text/css");
+    });
+    server.on("/js/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/js/bootstrap.bundle.min.js.gz", "text/javascript");
+    });
+    server.on("/css/roboto.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/css/roboto.css.gz", "text/css");
+    });
+    server.on("/js/jquery-3.5.1.min.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/js/jquery-3.5.1.min.js.gz", "text/javascript");
+    });
+    server.on("/webfonts/fa-solid-900.woff", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/webfonts/fa-solid-900.woff.gz", "font/woff");
+    });
+    server.on("/webfonts/roboto_c9.ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/webfonts/roboto_c9.ttf.gz", "font/ttf");
+    });
+    server.on("/webfonts/roboto_xP.ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/webfonts/roboto_xP.ttf.gz", "font/ttf");
+    });
+    server.on("/css/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/css/bootstrap.min.css.gz", "text/css");
+    });
+    server.on("/css/fontawesome.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/css/fontawesome.min.css.gz", "text/css");
+    });
+    server.on("/css/solid.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
+        loadFromSPIFFS(request, "/css/solid.min.css.gz", "text/css");
+    });
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+    });
+    server.on("/index.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/index.html", String(), false, processor);
+    });
+    server.on("/graphs.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/graphs.html", String(), false, processor);
+    });
+    server.on("/configuration.html", HTTP_GET, [](AsyncWebServerRequest *request) {
+        request->send(SPIFFS, "/configuration.html", String(), false, processor);
+    });
 
     server.on("/configuration.html", HTTP_POST, [](AsyncWebServerRequest *request) {
         onSave(request);
@@ -318,8 +388,8 @@ String processor(const String &var)
     if (var == F("LASTMEASUREMENT"))
     {
         uptime::calculateUptime();
-        return checkNoData(String(uptime::getMinutesRaw() - uptime_minutes_received), 
-        String(F("-")));
+        return checkNoData(String(uptime::getMinutesRaw() - uptime_minutes_received),
+                           String(F("-")));
     }
 
     if (var == F("UPTIME"))
@@ -342,7 +412,7 @@ String processor(const String &var)
 bool init_wifi(String ssid, String pass)
 {
     Serial.println(ssid);
-    Serial.println(pass);
+    //Serial.println(pass);
 
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
 
@@ -536,7 +606,7 @@ void setup()
     log(F("Booting..."));
 
     // Initialize SPIFFS
-    if (!LITTLEFS.begin(true))
+    if (!SPIFFS.begin(false, "/spiffs", 100))
     {
         Serial.println(F("An Error has occurred while mounting LITTLEFS"));
         return;
@@ -560,6 +630,7 @@ void setup()
         // BT config
         log(F("BT Configuration enabled"));
         SerialBT.register_callback(callback);
+        SerialBT.begin(bluetooth_name);
     }
     else
     {
@@ -573,15 +644,18 @@ void setup()
         SerialBT.register_callback(callback_show_ip);
         startWebServer();
     }
-    SerialBT.begin(bluetooth_name);
+    Serial.println("Before 433 Mhz init");
 
     if (!driver.init())
         Serial.println(F("433 MHz init failed"));
 
     ThingSpeak.begin(client); // Initialize ThingSpeak
+    Serial.println("before easyDDNS");
     EasyDDNS.service(F("duckdns"));
     if (duckdnsDomain != "" && duckdnsToken != "")
         EasyDDNS.client(duckdnsDomain, duckdnsToken);
+
+    Serial.println("setup done");
 }
 
 void loop()

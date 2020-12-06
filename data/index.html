@@ -1,0 +1,100 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>Jimka</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../css/fontawesome.min.css">
+  <link rel="stylesheet" href="../css/solid.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/roboto.css">
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <a class="navbar-brand" href="#">Jimka <i class="fas fa-toilet"></i></a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown"
+      aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+      <ul class="navbar-nav">
+        <li class="nav-item active">
+          <a class="nav-link" href="/index.html">Hlavní strana <span class="sr-only">(current)</span></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/graphs.html">Grafy</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/configuration.html">Nastavení</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="card-columns">
+      <div class="card shadow p-2 mb-4 bg-white rounded" style="min-width: 234px;">
+        <div class="card-body">
+          <h5 class="card-title text-center text-uppercase text-primary"><i class="fas fa-water"></i> Hladina</h5>
+          <p class="card-text text-center "><strong> %HLADINA%cm</strong> / %HLOUBKA%cm<br />
+            <strong>%PLNOSTPERC%&#37;</strong>
+          <div class="tank">
+            <div class="water" style="height: %PLNOSTPERC%%%;"></div>
+          </div>
+          </p>
+        </div>
+      </div>
+      <div class="card shadow p-2 mb-4 bg-white rounded">
+        <div class="card-body">
+          <h5 class="card-title text-center text-uppercase text-primary"><i class="fas fa-history"></i> Aktualizováno
+            před</h5>
+          <p class="card-text text-center">%LASTMEASUREMENT% minutama</p>
+        </div>
+      </div>
+      <div class="card shadow p-2 mb-4 bg-white rounded">
+        <div class="card-body">
+          <h5 class="card-title text-center text-uppercase text-primary"><i class="fas fa-thermometer-half"></i> Teplota
+          </h5>
+          <p class="card-text text-center">%TEPLOTA%&deg;C</p>
+        </div>
+      </div>
+      <div class="card shadow p-2 mb-4 bg-white rounded">
+        <div class="card-body">
+          <h5 class="card-title text-center text-uppercase text-primary"><i class="fas fa-tint"></i> Vlhkost</h5>
+          <p class="card-text text-center">%VLHKOST%&percnt;</p>
+        </div>
+      </div>
+      <div class="card shadow p-2 mb-4 bg-white rounded" style="min-width: 274px;">
+        <div class="card-body">
+          <h5 class="card-title text-center text-uppercase text-primary"><i class="fas fa-car-battery"></i> Baterie</h5>
+          <p class="card-text text-center"><strong>%BATTPERCENT%&#37;</strong> (%VOLT%V)
+          <div class="bat-auto">
+            <div id="batBody">
+              <div id="indicator" style="width: %BATTPERCENT%%%;">
+              </div>
+            </div>
+            <div class="batEnd">
+              <div></div>
+            </div>
+          </div>
+          </p>
+        </div>
+      </div>
+      <div class="card shadow p-2 mb-4 bg-white rounded">
+        <div class="card-body">
+          <h5 class="card-title text-center text-uppercase text-primary"><i class="fas fa-clock"></i> Uptime</h5>
+          <p class="card-text text-center">%UPTIME%</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="../js/jquery-3.5.1.min.js"></script>
+  <script src="../js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

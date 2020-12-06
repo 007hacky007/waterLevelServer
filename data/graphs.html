@@ -1,0 +1,58 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <title>Jimka</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../css/fontawesome.min.css">
+  <link rel="stylesheet" href="../css/solid.min.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/bootstrap.min.css">
+  <link rel="stylesheet" href="../css/roboto.css">
+  <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+  <meta content="utf-8" http-equiv="encoding">
+</head>
+
+<body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <a class="navbar-brand" href="#">Jimka <i class="fas fa-toilet"></i></a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown"
+      aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+      <ul class="navbar-nav">
+        <li class="nav-item">
+          <a class="nav-link" href="/index.html">Hlavní strana</a>
+        </li>
+        <li class="nav-item active">
+          <a class="nav-link" href="/graphs.html">Grafy <span class="sr-only">(current)</span></a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/configuration.html">Nastavení</a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="embed-responsive embed-responsive-16by9" style="height: 225px;">
+      <iframe class="embed-responsive-item" src="https://thingspeak.com/channels/%THINGSPEAKCHANNEL%/charts/3?bgcolor=%23fffffff&color=%230000FF&days=30&dynamic=true&type=line" ></iframe>
+    </div>
+    <div class="embed-responsive embed-responsive-16by9" style="height: 225px;">
+      <iframe class="embed-responsive-item" src="https://thingspeak.com/channels/%THINGSPEAKCHANNEL%/charts/4?bgcolor=%23fffffff&color=%230000FF&days=30&dynamic=true&type=line" ></iframe>
+    </div>
+    <div class="embed-responsive embed-responsive-16by9" style="height: 225px;">
+      <iframe class="embed-responsive-item" src="https://thingspeak.com/channels/%THINGSPEAKCHANNEL%/charts/2?bgcolor=%23fffffff&color=%230000FF&days=30&dynamic=true&type=line" ></iframe>
+    </div>
+    <div class="embed-responsive embed-responsive-16by9" style="height: 225px;">
+      <iframe class="embed-responsive-item" src="https://thingspeak.com/channels/%THINGSPEAKCHANNEL%/charts/1?bgcolor=%23fffffff&color=%230000FF&days=30&dynamic=true&type=line" ></iframe>
+    </div>
+  </div>
+  <script src="../js/jquery-3.5.1.min.js"></script>
+  <script src="../js/popper.min.js"></script>
+  <script src="../js/bootstrap.min.js"></script>
+</body>
+
+</html>
