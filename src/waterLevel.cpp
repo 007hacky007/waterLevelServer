@@ -157,9 +157,9 @@ bool loadFromLittleFS(AsyncWebServerRequest *request, String path, String dataTy
 {
     //Serial.print("Requested page -> ");
     //Serial.println(path);
-    if (LITTLEFS.exists(path))
+    if (LITTLEFS.exists(path + ".gz"))
     {
-        File dataFile = LITTLEFS.open(path, "r");
+        File dataFile = LITTLEFS.open(path + ".gz", "r");
         if (!dataFile)
         {
             notFound(request);
@@ -170,7 +170,6 @@ bool loadFromLittleFS(AsyncWebServerRequest *request, String path, String dataTy
         //Serial.print("Real file path: ");
         //Serial.println(path);
 
-        response->addHeader("Content-Encoding", "gzip");
         request->send(response);
 
         dataFile.close();
@@ -186,34 +185,34 @@ bool loadFromLittleFS(AsyncWebServerRequest *request, String path, String dataTy
 void startWebServer()
 {
     server.on("/css/style.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/css/style.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/style.css", "text/css");
     });
     server.on("/js/bootstrap.bundle.min.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/js/bootstrap.bundle.min.js.gz", "text/javascript");
+        loadFromLittleFS(request, "/js/bootstrap.bundle.min.js", "text/javascript");
     });
     server.on("/css/roboto.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/css/roboto.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/roboto.css", "text/css");
     });
     server.on("/js/jquery-3.5.1.min.js", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/js/jquery-3.5.1.min.js.gz", "text/javascript");
+        loadFromLittleFS(request, "/js/jquery-3.5.1.min.js", "text/javascript");
     });
     server.on("/webfonts/fa-solid-900.woff", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/webfonts/fa-solid-900.woff.gz", "font/woff");
+        loadFromLittleFS(request, "/webfonts/fa-solid-900.woff", "font/woff");
     });
     server.on("/webfonts/roboto_c9.ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/webfonts/roboto_c9.ttf.gz", "font/ttf");
+        loadFromLittleFS(request, "/webfonts/roboto_c9.ttf", "font/ttf");
     });
     server.on("/webfonts/roboto_xP.ttf", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/webfonts/roboto_xP.ttf.gz", "font/ttf");
+        loadFromLittleFS(request, "/webfonts/roboto_xP.ttf", "font/ttf");
     });
     server.on("/css/bootstrap.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/css/bootstrap.min.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/bootstrap.min.css", "text/css");
     });
     server.on("/css/fontawesome.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/css/fontawesome.min.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/fontawesome.min.css", "text/css");
     });
     server.on("/css/solid.min.css", HTTP_GET, [](AsyncWebServerRequest *request) {
-        loadFromLittleFS(request, "/css/solid.min.css.gz", "text/css");
+        loadFromLittleFS(request, "/css/solid.min.css", "text/css");
     });
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send(LITTLEFS, "/index.html", String(), false, processor);
